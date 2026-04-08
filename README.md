@@ -6,7 +6,6 @@ Projeto desenvolvido para o Challenge de Banco de Dados Oracle, implementando fu
 
 ## Autores
 
-- RM567164 - Édipo Borges de Carvalho
 - RM559986 - Guilherme Jun Conheci
 - RM560088 - Igor Neris Soares Alves
 
