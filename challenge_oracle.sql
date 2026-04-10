@@ -1,64 +1,11 @@
---RM     Nome
---567164 Édipo Borges de Carvalho
---559986 Guilherme Jun Conheci
---560088 Igor Neris Soaress Alves
-
--- DROP TABLES com tratamento de erro
-BEGIN
-   EXECUTE IMMEDIATE 'DROP TABLE vendas CASCADE CONSTRAINTS';
-EXCEPTION
-   WHEN OTHERS THEN NULL;
-END;
-/
-
-BEGIN
-   EXECUTE IMMEDIATE 'DROP TABLE venda_evento CASCADE CONSTRAINTS';
-EXCEPTION
-   WHEN OTHERS THEN NULL;
-END;
-/
-
-BEGIN
-   EXECUTE IMMEDIATE 'DROP TABLE servico CASCADE CONSTRAINTS';
-EXCEPTION
-   WHEN OTHERS THEN NULL;
-END;
-/
-
-BEGIN
-   EXECUTE IMMEDIATE 'DROP TABLE reg_cont CASCADE CONSTRAINTS';
-EXCEPTION
-   WHEN OTHERS THEN NULL;
-END;
-/
-
-BEGIN
-   EXECUTE IMMEDIATE 'DROP TABLE dispositivo_iot CASCADE CONSTRAINTS';
-EXCEPTION
-   WHEN OTHERS THEN NULL;
-END;
-/
-
-BEGIN
-   EXECUTE IMMEDIATE 'DROP TABLE conta_contabil CASCADE CONSTRAINTS';
-EXCEPTION
-   WHEN OTHERS THEN NULL;
-END;
-/
-
-BEGIN
-   EXECUTE IMMEDIATE 'DROP TABLE cliente CASCADE CONSTRAINTS';
-EXCEPTION
-   WHEN OTHERS THEN NULL;
-END;
-/
-
-BEGIN
-   EXECUTE IMMEDIATE 'DROP TABLE centro_custo CASCADE CONSTRAINTS';
-EXCEPTION
-   WHEN OTHERS THEN NULL;
-END;
-/
+DROP TABLE centro_custo CASCADE CONSTRAINTS;
+DROP TABLE cliente CASCADE CONSTRAINTS;
+DROP TABLE conta_contabil CASCADE CONSTRAINTS;
+DROP TABLE dispositivo_iot CASCADE CONSTRAINTS;
+DROP TABLE reg_cont CASCADE CONSTRAINTS;
+DROP TABLE servico CASCADE CONSTRAINTS;
+DROP TABLE venda_evento CASCADE CONSTRAINTS;
+DROP TABLE vendas CASCADE CONSTRAINTS;
 
 CREATE TABLE centro_custo (
     id_centro_custo   NUMBER(4) NOT NULL,
@@ -71,39 +18,25 @@ CREATE TABLE cliente (
     id_cliente    NUMBER(5) NOT NULL,
     nome_cliente  VARCHAR2(100) NOT NULL,
     data_cadastro DATE DEFAULT sysdate NOT NULL,
-    cnpj          NUMBER(14) NOT NULL,
+    cpf_cnpj      VARCHAR2(14) NOT NULL,
     email         VARCHAR2(100) NOT NULL,
     senha         VARCHAR2(100) NOT NULL,
-    ativo         CHAR(1) DEFAULT 'A' NOT NULL
+    ativo         CHAR(1) DEFAULT 'S' NOT NULL
 );
 
-ALTER TABLE cliente ADD CONSTRAINT cliente_chk_ativo CHECK ( ativo IN ( 'A', 'I' ) );
 ALTER TABLE cliente ADD CONSTRAINT cliente_pk PRIMARY KEY ( id_cliente );
-ALTER TABLE cliente ADD CONSTRAINT cliente_cnpj_un UNIQUE ( cnpj );
+ALTER TABLE cliente ADD CONSTRAINT cliente_cpf_cnpj_un UNIQUE ( cpf_cnpj );
 ALTER TABLE cliente ADD CONSTRAINT cliente_email_un UNIQUE ( email );
 
 CREATE TABLE conta_contabil (
-    id_conta            NUMBER(4) NOT NULL,
+    id_conta_contabil   NUMBER(4) NOT NULL,
     nome_conta_contabil VARCHAR2(70) NOT NULL,
     tipo                CHAR(1) NOT NULL,
     cliente_id_cliente  NUMBER(5)
 );
 
--- Remover constraint se existir antes de criar
-BEGIN
-   FOR c IN (SELECT constraint_name 
-             FROM user_constraints 
-             WHERE table_name = 'CONTA_CONTABIL' 
-             AND constraint_name = 'CONTA_CHK_TIPO') LOOP
-      EXECUTE IMMEDIATE 'ALTER TABLE conta_contabil DROP CONSTRAINT ' || c.constraint_name;
-   END LOOP;
-EXCEPTION
-   WHEN OTHERS THEN NULL;
-END;
-/
-
 ALTER TABLE conta_contabil ADD CONSTRAINT conta_chk_tipo CHECK ( tipo IN ( 'R', 'D' ) );
-ALTER TABLE conta_contabil ADD CONSTRAINT conta_contabil_pk PRIMARY KEY ( id_conta );
+ALTER TABLE conta_contabil ADD CONSTRAINT conta_contabil_pk PRIMARY KEY ( id_conta_contabil );
 
 CREATE TABLE dispositivo_iot (
     id_dispos   NUMBER(6) NOT NULL,
@@ -151,8 +84,8 @@ CREATE TABLE venda_evento (
     valor_total          NUMBER(9, 2),
     origem               VARCHAR2(20) DEFAULT 'RFID',
     dt_evento            DATE DEFAULT sysdate NOT NULL,
-    payload_json         CLOB,
-    vendas_id_vendas     NUMBER(9)
+    payload_json         CLOB
+    --vendas_id_vendas     NUMBER(9)
 );
 
 ALTER TABLE venda_evento ADD CONSTRAINT venda_evento_pk PRIMARY KEY ( id_evento );
@@ -161,10 +94,12 @@ CREATE TABLE vendas (
     id_vendas              NUMBER(9) NOT NULL,
     cliente_id_cliente     NUMBER(5) NOT NULL,
     reg_cont_id_reg_cont   NUMBER(4) NOT NULL,
-    venda_evento_id_evento NUMBER(12)
+    venda_evento_id_evento NUMBER(12) NULL
 );
 
 ALTER TABLE vendas ADD CONSTRAINT vendas_pk PRIMARY KEY ( id_vendas );
+ALTER TABLE vendas ADD CONSTRAINT venda_id_evento_un UNIQUE ( venda_evento_id_evento );
+
 
 ALTER TABLE conta_contabil
     ADD CONSTRAINT conta_contabil_cliente_fk FOREIGN KEY ( cliente_id_cliente )
@@ -176,7 +111,7 @@ ALTER TABLE reg_cont
 
 ALTER TABLE reg_cont
     ADD CONSTRAINT reg_cont_conta_contabil_fk FOREIGN KEY ( conta_contabil_id_conta )
-        REFERENCES conta_contabil ( id_conta );
+        REFERENCES conta_contabil ( id_conta_contabil );
 
 ALTER TABLE venda_evento
     ADD CONSTRAINT venda_evento_cliente_fk FOREIGN KEY ( cliente_id_cliente )
@@ -190,10 +125,6 @@ ALTER TABLE venda_evento
     ADD CONSTRAINT venda_evento_servico_fk FOREIGN KEY ( servico_id_servico )
         REFERENCES servico ( id_servico );
 
-ALTER TABLE venda_evento
-    ADD CONSTRAINT venda_evento_vendas_fk FOREIGN KEY ( vendas_id_vendas )
-        REFERENCES vendas ( id_vendas );
-
 ALTER TABLE vendas
     ADD CONSTRAINT vendas_cliente_fk FOREIGN KEY ( cliente_id_cliente )
         REFERENCES cliente ( id_cliente );
@@ -205,7 +136,6 @@ ALTER TABLE vendas
 ALTER TABLE vendas
     ADD CONSTRAINT vendas_venda_evento_fk FOREIGN KEY ( venda_evento_id_evento )
         REFERENCES venda_evento ( id_evento );
-        
         
 SET SERVEROUTPUT ON;
 SET VERIFY OFF;
@@ -233,7 +163,7 @@ BEGIN
     -- Verifica duplicidade de CNPJ
     SELECT COUNT(*) INTO v_existe_cnpj
       FROM cliente
-     WHERE cnpj = p_cnpj;
+     WHERE cpf_cnpj = p_cnpj;
 
     IF v_existe_cnpj > 0 THEN
         RETURN 'ERRO: CNPJ já cadastrado.';
@@ -355,7 +285,7 @@ END;
 CREATE OR REPLACE PROCEDURE prc_ins_cliente (
     p_id_cliente   IN cliente.id_cliente%TYPE,
     p_nome_cliente IN cliente.nome_cliente%TYPE,
-    p_cnpj         IN cliente.cnpj%TYPE,
+    p_cnpj         IN cliente.cpf_cnpj%TYPE,
     p_email        IN cliente.email%TYPE,
     p_senha        IN cliente.senha%TYPE,
     p_ativo        IN cliente.ativo%TYPE DEFAULT 'A',
@@ -389,7 +319,7 @@ BEGIN
     INSERT INTO cliente (
         id_cliente,
         nome_cliente,
-        cnpj,
+        cpf_cnpj,
         email,
         senha,
         ativo
@@ -419,7 +349,7 @@ END;
 CREATE OR REPLACE PROCEDURE prc_upd_cliente (
     p_id_cliente   IN cliente.id_cliente%TYPE,
     p_nome_cliente IN cliente.nome_cliente%TYPE,
-    p_cnpj         IN cliente.cnpj%TYPE,
+    p_cnpj         IN cliente.cpf_cnpj%TYPE,
     p_email        IN cliente.email%TYPE,
     p_senha        IN cliente.senha%TYPE,
     p_ativo        IN cliente.ativo%TYPE,
@@ -445,7 +375,7 @@ BEGIN
     BEGIN
         SELECT COUNT(*) INTO v_existe_cnpj
           FROM cliente
-         WHERE cnpj = p_cnpj AND id_cliente != p_id_cliente;
+         WHERE cpf_cnpj = p_cnpj AND id_cliente != p_id_cliente;
 
         IF v_existe_cnpj > 0 THEN
             p_resultado := 'ERRO: CNPJ já cadastrado para outro cliente.';
@@ -476,7 +406,7 @@ BEGIN
     -- Atualização
     UPDATE cliente
        SET nome_cliente = p_nome_cliente,
-           cnpj         = p_cnpj,
+           cpf_cnpj         = p_cnpj,
            email        = p_email,
            senha        = p_senha,
            ativo        = p_ativo
@@ -999,4 +929,3 @@ EXCEPTION
         RAISE_APPLICATION_ERROR(-20002, 'Erro ao gerar relatório financeiro: ' || SQLERRM);
 END;
 /
-
