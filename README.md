@@ -6,7 +6,6 @@ Projeto desenvolvido para o Challenge de Banco de Dados Oracle, implementando fu
 
 ## Autores
 
-- RM567164 - Édipo Borges de Carvalho
 - RM559986 - Guilherme Jun Conheci
 - RM560088 - Igor Neris Soares Alves
 
@@ -66,14 +65,6 @@ Projeto desenvolvido para o Challenge de Banco de Dados Oracle, implementando fu
 └── README.md                     # Este arquivo
 ```
 
-## Configuração do Banco de Dados
-
-- **Host:** oracle.fiap.com.br
-- **Porta:** 1521
-- **SID:** orcl
-- **Usuário:** rm560088
-- **Senha:** 061005
-
 ## Como Executar
 
 ### 1. Preparar o Banco de Dados
@@ -131,7 +122,3 @@ SELECT * FROM TABLE(fn_relatorio_financeiro_centro_custo);
 2. **Validações:** Todas as procedures utilizam funções de validação antes de inserir/atualizar
 3. **Tratamento de Erros:** Todas as procedures têm tratamento robusto de exceções
 4. **Dados de Teste:** Para testar venda_evento, é necessário ter dados válidos nas tabelas relacionadas (dispositivo_iot, servico, cliente)
-
-## Status do Projeto
-
-✅ **Concluído** - Todos os requisitos foram implementados e testados.
